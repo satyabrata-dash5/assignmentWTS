@@ -18,6 +18,7 @@ const FormInput = ({ labelValue, placeholderText, iconType, keyboardType, ...res
         placeholder={placeholderText}
         placeholderTextColor="#666"
         keyboardType={keyboardType}
+        autoCapitalize="none"
         {...rest}
       />
     </View>

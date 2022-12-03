@@ -1,17 +1,26 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, Platform, StyleSheet, ActivityIndicator } from 'react-native';
+import { View, Text, TouchableOpacity, Platform, StyleSheet, ActivityIndicator, TextInput } from 'react-native';
 import FormInput from '../components/FormInput';
 import FormButton from '../components/FormButton';
-//import Auth from '../Store/auth';
 import auth from '@react-native-firebase/auth';
 import firestore from '@react-native-firebase/firestore';
-
+import { windowHeight, windowWidth } from '../utils/Dimentions';
+import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
+import Ionicons from 'react-native-vector-icons/Ionicons';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view'
 
 const SignupScreen = ({ navigation }) => {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState();
   const [confirmPassword, setConfirmPassword] = useState();
+  const [data, setData] = useState({
+    secureTextEntry: true,
+    confirm_secureTextEntry: true,
+    isValidEmail: true,
+    isValidPassword: true,
+    isValidName: true,
+  });
   const [isLoading, setIsLoading] = useState(false);
 
   const onSignup = () => {
@@ -80,6 +89,66 @@ const SignupScreen = ({ navigation }) => {
       });
   };
 
+  const handleValidUser = (val) => {
+    if (val && val.trim().length >= 4) {
+      setData({
+        ...data,
+        email: val,
+        isValidEmail: true
+      });
+    } else {
+      setData({
+        ...data,
+        email: val,
+        isValidEmail: false
+      });
+    }
+  }
+  const handlePasswordChange = (val) => {
+    if (val.trim().length >= 6) {
+      setData({
+        ...data,
+        password: val,
+        isValidPassword: true
+      });
+    } else {
+      setData({
+        ...data,
+        password: val,
+        isValidPassword: false
+      });
+    }
+  }
+  const handleNameChange = (val) => {
+    if (val.trim().length >= 4) {
+      setData({
+        ...data,
+        name: val,
+        isValidName: true
+      });
+    } else {
+      setData({
+        ...data,
+        name: val,
+        isValidName: false
+      });
+    }
+  }
+
+  const updateSecureTextEntry = () => {
+    setData({
+      ...data,
+      secureTextEntry: !data.secureTextEntry
+    });
+  }
+
+  const updateConfirmSecureTextEntry = () => {
+    setData({
+      ...data,
+      confirm_secureTextEntry: !data.confirm_secureTextEntry
+    });
+  }
+
   if (isLoading) {
     return (
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
@@ -89,7 +158,7 @@ const SignupScreen = ({ navigation }) => {
   }
 
   return (
-    <View style={styles.container}>
+    <KeyboardAwareScrollView contentContainerStyle={styles.container}>
       <Text style={styles.text}>Create an account</Text>
 
       <FormInput
@@ -100,7 +169,14 @@ const SignupScreen = ({ navigation }) => {
         keyboardType={'default'}
         autoCapitalize="none"
         autoCorrect={false}
+        onEndEditing={(e) => handleNameChange(e.nativeEvent.text)}
       />
+
+      {data.isValidName ? null :
+        <View style={{ justifyContent: 'flex-start' }} >
+          <Text style={styles.errorMsg}>Hey ! Name should not be empty.</Text>
+        </View>}
+
       <FormInput
         labelValue={email}
         onChangeText={(userEmail) => setEmail(userEmail)}
@@ -109,34 +185,95 @@ const SignupScreen = ({ navigation }) => {
         keyboardType={"email-address"}
         autoCapitalize="none"
         autoCorrect={false}
+        onEndEditing={(e) => handleValidUser(e.nativeEvent.text)}
       />
 
-      <FormInput
-        labelValue={password}
-        onChangeText={(userPassword) => setPassword(userPassword)}
-        placeholderText="Password"
-        iconType="lock-outline"
-        secureTextEntry={true}
-        keyboardType={'default'}
-      />
+      {data.isValidEmail ? null :
+        <View style={{ justifyContent: 'flex-start' }} >
+          <Text style={styles.errorMsg}>Hey ! Email should not be empty.</Text>
+        </View>
+      }
 
-      <FormInput
-        labelValue={confirmPassword}
-        onChangeText={(userPassword) => setConfirmPassword(userPassword)}
-        placeholderText="Confirm Password"
-        iconType="lock-outline"
-        secureTextEntry={true}
-        keyboardType={'default'}
-      />
+
+      <View style={styles.inputContainer}>
+        <View style={styles.iconStyle}>
+          <MaterialCommunityIcons name={'lock-outline'} size={25} color="#666" />
+        </View>
+        <TextInput
+          value={password}
+          style={styles.input}
+          numberOfLines={1}
+          placeholder='Password'
+          placeholderTextColor="#666"
+          keyboardType="default"
+          secureTextEntry={data.secureTextEntry ? true : false}
+          autoCapitalize="none"
+          onChangeText={(userPassword) => setPassword(userPassword)}
+          onEndEditing={(e) => handlePasswordChange(e.nativeEvent.text)}
+        />
+        <TouchableOpacity
+          onPress={updateSecureTextEntry}
+        >
+          {data.secureTextEntry ?
+            <Ionicons
+              name="eye-off"
+              color="#2e64e5"
+              size={20}
+            />
+            :
+            <Ionicons
+              name="eye"
+              color="#2e64e5"
+              size={20}
+            />
+          }
+        </TouchableOpacity>
+      </View>
+
+      {data.isValidPassword ? null :
+        <View style={{ justifyContent: 'flex-start' }} >
+          <Text style={styles.errorMsg}>Password must be 6 characters long.</Text>
+        </View>
+      }
+
+      <View style={styles.inputContainer}>
+        <View style={styles.iconStyle}>
+          <MaterialCommunityIcons name={'lock-outline'} size={25} color="#666" />
+        </View>
+        <TextInput
+          value={confirmPassword}
+          style={styles.input}
+          numberOfLines={1}
+          placeholder="Confirm Password"
+          placeholderTextColor="#666"
+          keyboardType="default"
+          secureTextEntry={data.confirm_secureTextEntry ? true : false}
+          autoCapitalize="none"
+          onChangeText={(userConfirmPassword) => setConfirmPassword(userConfirmPassword)}
+          onEndEditing={(e) => handlePasswordChange(e.nativeEvent.text)}
+        />
+        <TouchableOpacity
+          onPress={updateConfirmSecureTextEntry}
+        >
+          {data.confirm_secureTextEntry ?
+            <Ionicons
+              name="eye-off"
+              color="#2e64e5"
+              size={20}
+            />
+            :
+            <Ionicons
+              name="eye"
+              color="#2e64e5"
+              size={20}
+            />
+          }
+        </TouchableOpacity>
+      </View>
 
       <FormButton
         buttonTitle="Sign Up"
         onPress={() => onSignup()
-
-          //   Auth.signUp(email, password).then(
-          //   alert('Successfully Created'),
-          //   navigation.navigate('login')
-          // )
         }
       />
 
@@ -160,7 +297,8 @@ const SignupScreen = ({ navigation }) => {
         onPress={() => navigation.navigate('login')}>
         <Text style={styles.navButtonText}>Have an account? Sign In</Text>
       </TouchableOpacity>
-    </View>
+      {/* </View> */}
+    </KeyboardAwareScrollView>
   );
 };
 
@@ -197,5 +335,41 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '400',
     color: 'grey',
+  },
+  inputContainer: {
+    marginTop: 5,
+    marginBottom: 10,
+    width: '100%',
+    height: windowHeight / 15,
+    borderColor: '#ccc',
+    borderRadius: 3,
+    borderWidth: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    paddingRight: 10
+  },
+  iconStyle: {
+    padding: 10,
+    height: '100%',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderRightColor: '#ccc',
+    borderRightWidth: 1,
+    width: 50,
+  },
+  input: {
+    padding: 10,
+    flex: 1,
+    fontSize: 16,
+    color: '#333',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+
+  errorMsg: {
+    color: '#FF0000',
+    fontSize: 14,
+    paddingLeft: 20,
   },
 });

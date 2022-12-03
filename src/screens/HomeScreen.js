@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Modal, ImageBackground, Dimensions, Alert, Linking, FlatList } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Modal, Dimensions, Alert, Linking, FlatList, ActivityIndicator } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import auth from '@react-native-firebase/auth';
-import { FAB } from 'react-native-paper';
+import { FAB, Button, Card, Title } from 'react-native-paper';
 import FormInput from '../components/FormInput';
 import firestore from '@react-native-firebase/firestore';
 import ImagePicker from 'react-native-image-crop-picker';
@@ -21,7 +21,83 @@ const HomeScreen = () => {
   const [userDetails, setUserDetails] = useState({});
   const [fileURI, setFileURI] = useState('');
   const [fileName, setFileName] = useState('');
+  const [productId, setProductId] = useState('');
   const [productData, setProductData] = useState(null);
+  const [deleted, setDeleted] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [transferred, setTransferred] = useState(0);
+  const [isLoading, setIsLoading] = useState(false);
+  const [data, setData] = useState({
+    secureTextEntry: true,
+    isValidProductName: true,
+    isValidProductImage: true,
+    isValidProductPrice: true,
+    isValidProductOfferPrice: true,
+  });
+
+  const handleValidProductName = (val) => {
+    if (val.trim().length >= 1) {
+      setData({
+        ...data,
+        productName: val,
+        isValidProductName: true
+      });
+    } else {
+      setData({
+        ...data,
+        productName: val,
+        isValidProductName: false
+      });
+    }
+  }
+
+  const handleValidProductImage = (val) => {
+    if (val.trim().length >= 1) {
+      setData({
+        ...data,
+        fileName: val,
+        isValidProductImage: true
+      });
+    } else {
+      setData({
+        ...data,
+        fileName: val,
+        isValidProductImage: false
+      });
+    }
+  }
+
+  const handleValidProductPrice = (val) => {
+    if (val.trim().length >= 1) {
+      setData({
+        ...data,
+        productPrice: val,
+        isValidProductPrice: true
+      });
+    } else {
+      setData({
+        ...data,
+        productPrice: val,
+        isValidProductPrice: false
+      });
+    }
+  }
+
+  const handleValidProductOfferPrice = (val) => {
+    if (val.trim().length >= 1) {
+      setData({
+        ...data,
+        productOfferPrice: val,
+        isValidProductOfferPrice: true
+      });
+    } else {
+      setData({
+        ...data,
+        productOfferPrice: val,
+        isValidProductOfferPrice: false
+      });
+    }
+  }
 
   useEffect(() => {
     const currentUserId = auth().currentUser ? auth().currentUser.uid : "";
@@ -40,18 +116,22 @@ const HomeScreen = () => {
     fetchProducts();
   }, []);
 
+  useEffect(() => {
+    fetchProducts();
+    setDeleted(false);
+  }, [deleted]);
+
   const fetchProducts = async () => {
+    setIsLoading(true);
     try {
       const list = [];
-
       await firestore()
         .collection('Products')
         .orderBy('addProductTime', 'desc')
         .get()
         .then((querySnapshot) => {
-          console.log('Total Posts: ', querySnapshot.size);
-
           querySnapshot.forEach((doc) => {
+            setProductId(doc.id);
             const {
               userId,
               productName,
@@ -59,6 +139,7 @@ const HomeScreen = () => {
               addProductTime,
               productPrice,
               productOfferPrice,
+              productFileName,
             } = doc.data();
             list.push({
               id: doc.id,
@@ -66,6 +147,7 @@ const HomeScreen = () => {
               productName: productName,
               productImageURI: productImageURI,
               addProductTime: addProductTime,
+              productFileName: productFileName,
               productPrice,
               productOfferPrice,
             });
@@ -73,22 +155,86 @@ const HomeScreen = () => {
         });
 
       setProductData(list);
-
+      setIsLoading(false);
       if (loading) {
         setLoading(false);
       }
-
-      console.log('productData: ', productData);
     } catch (e) {
       console.log(e);
     }
   };
 
+  const UpdateProduct = async () => {
+    if (!productName.trim()) {
+      alert('Please Enter product name');
+      return;
+    }
+    if (!fileName.trim()) {
+      alert('Please Select Product Image');
+      return;
+    }
+    if (!productPrice.trim()) {
+      alert('Please Select Product Price');
+      return;
+    }
+    if (!productOfferPrice.trim()) {
+      alert('Please Select Product Offer Price');
+      return;
+    }
+    setIsLoading(true);
+    const imageUrl = await uploadImage();
+    const updatedImageUrl = productId !== '' ? fileURI : imageUrl
+    console.log(updatedImageUrl);
+    firestore()
+      .collection('Products')
+      .doc(productId)
+      .update({
+        userId: userDetails.id,
+        addProductTime: firestore.Timestamp.fromDate(new Date()),
+        productName: productName,
+        productFileName: fileName,
+        productImageURI: updatedImageUrl,
+        productPrice: productPrice,
+        productOfferPrice: productOfferPrice
+      })
+      .then(() => {
+        console.log('Prdoduct updated!');
+        Alert.alert(
+          'Product updated!',
+          'Your product has been updated Successfully!',
+        );
+        setIsLoading(false);
+        setModalVisible(!modalVisible)
+        setProductName('');
+        setFileURI('');
+        setProductPrice('');
+        setProductOfferPrice('');
+      })
+      .catch((error) => {
+        console.log('Something went wrong to firestore.', error);
+      });
+  }
+
 
   const AddProduct = async () => {
+    if (!productName.trim()) {
+      alert('Please Enter product name');
+      return;
+    }
+    if (!fileName.trim()) {
+      alert('Please Select Product Image');
+      return;
+    }
+    if (!productPrice.trim()) {
+      alert('Please Select Product Price');
+      return;
+    }
+    if (!productOfferPrice.trim()) {
+      alert('Please Select Product Offer Price');
+      return;
+    }
+    setIsLoading(true);
     const imageUrl = await uploadImage();
-    console.log('Image Url: ', imageUrl);
-    // console.log("userDetails====?>>>>>>", userDetails.id, firestore.Timestamp.fromDate(new Date()), productName, imageUrl, productPrice, productOfferPrice);
 
     firestore()
       .collection('Products')
@@ -96,6 +242,7 @@ const HomeScreen = () => {
         userId: userDetails.id,
         addProductTime: firestore.Timestamp.fromDate(new Date()),
         productName: productName,
+        productFileName: fileName,
         productImageURI: imageUrl,
         productPrice: productPrice,
         productOfferPrice: productOfferPrice
@@ -106,6 +253,7 @@ const HomeScreen = () => {
           'Product saved!',
           'Your product has been saved Successfully!',
         );
+        setIsLoading(false);
         setModalVisible(!modalVisible)
         setProductName('');
         setFileURI('');
@@ -129,8 +277,8 @@ const HomeScreen = () => {
     const name = filename.split('.').slice(0, -1).join('.');
     filename = name + Date.now() + '.' + extension;
 
-    // setUploading(true);
-    // setTransferred(0);
+    setUploading(true);
+    setTransferred(0);
 
     const storageRef = storage().ref(`photos/${filename}`);
     const task = storageRef.putFile(uploadUri);
@@ -141,31 +289,23 @@ const HomeScreen = () => {
         `${taskSnapshot.bytesTransferred} transferred out of ${taskSnapshot.totalBytes}`,
       );
 
-      // setTransferred(
-      //   Math.round(taskSnapshot.bytesTransferred / taskSnapshot.totalBytes) *
-      //   100,
-      // );
+      setTransferred(
+        Math.round(taskSnapshot.bytesTransferred / taskSnapshot.totalBytes) *
+        100,
+      );
     });
 
     try {
       await task;
-
       const url = await storageRef.getDownloadURL();
-
-      // setUploading(false);
-      setFileURI('');
-
-      // Alert.alert(
-      //   'Image uploaded!',
-      //   'Your image has been uploaded to the Firebase Cloud Storage Successfully!',
-      // );
+      setUploading(false);
+      setFileURI(null);
       return url;
 
     } catch (e) {
       console.log(e);
       return null;
     }
-
   };
 
   const Greeting = () => {
@@ -183,11 +323,91 @@ const HomeScreen = () => {
     return greet
   }
 
+  const handleEditProduct = (item) => {
+    setModalVisible(true);
+    setProductName(item.productName);
+    setFileURI(item.productImageURI);
+    setFileName(item.productFileName)
+    setProductPrice(item.productPrice);
+    setProductOfferPrice(item.productOfferPrice);
+  }
+
+  const handleDeleteProduct = (pId) => {
+    Alert.alert(
+      'Delete product',
+      'Are you sure?',
+      [
+        {
+          text: 'Cancel',
+          onPress: () => console.log('Cancel Pressed!'),
+          style: 'cancel',
+        },
+        {
+          text: 'Confirm',
+          onPress: () => deleteProduct(pId),
+        },
+      ],
+      { cancelable: false },
+    );
+  };
+
+  const deleteProduct = (pId) => {
+    console.log('Current Product Id: ', pId);
+    setIsLoading(true);
+    firestore()
+      .collection('Products')
+      .doc(pId)
+      .get()
+      .then((documentSnapshot) => {
+        if (documentSnapshot.exists) {
+          const { productImg } = documentSnapshot.data();
+
+          if (productImg != null) {
+            const storageRef = storage().refFromURL(productImg);
+            const imageRef = storage().ref(storageRef.fullPath);
+
+            imageRef
+              .delete()
+              .then(() => {
+                console.log(`${productImg} has been deleted successfully.`);
+                setIsLoading(false);
+                deleteFirestoreData(pId);
+              })
+              .catch((e) => {
+                console.log('Error while deleting the image. ', e);
+              });
+          } else {
+            deleteFirestoreData(pId);
+          }
+        }
+      });
+  };
+
+  const deleteFirestoreData = (pId) => {
+    setIsLoading(true);
+    firestore()
+      .collection('Products')
+      .doc(pId)
+      .delete()
+      .then(() => {
+        Alert.alert(
+          'Product deleted!',
+          'Your product has been deleted successfully!',
+        );
+        setIsLoading(false);
+        setDeleted(true);
+      })
+      .catch((e) => console.log('Error deleting posst.', e));
+  };
+
+
   const onSignout = () => {
+    setIsLoading(true);
     auth()
       .signOut()
       .then((res) => {
         console.log('User signed out!', res);
+        setIsLoading(false);
         alert('Signout Successfully')
       });
   }
@@ -227,8 +447,8 @@ const HomeScreen = () => {
   const pickImageFromGallery = () => {
     ImagePicker.openPicker({
       mediaType: 'photo',
-      width: 500,
-      height: 700,
+      width: 1200,
+      height: 780,
       cropping: true
     })
       .then((image) => {
@@ -255,8 +475,8 @@ const HomeScreen = () => {
   const pickImageUsingCamera = () => {
     ImagePicker.openCamera({
       mediaType: 'photo',
-      width: 500,
-      height: 700,
+      width: 1200,
+      height: 780,
       cropping: true
     })
       .then((image) => {
@@ -341,13 +561,21 @@ const HomeScreen = () => {
     Linking.openURL('app-settings:');
   };
 
+  if (isLoading) {
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+        <ActivityIndicator size="large" color="#2e64e5" />
+      </View>
+    );
+  }
+
 
   const renderProductsForm = () => {
     return (
       <View style={[styles.centeredView, { backgroundColor: 'rgba(0, 0, 0, 0.5)' }]}>
         <View style={styles.modalView}>
           <View style={styles.modalTextView}>
-            <Text style={styles.modalText}>Add Product</Text>
+            <Text style={styles.modalText}>{productId == '' ? 'Add Product' : 'Update Product'}</Text>
             <TouchableOpacity onPress={() => [
               setModalVisible(!modalVisible),
               setProductName(''),
@@ -364,9 +592,17 @@ const HomeScreen = () => {
             placeholderText="Type product name"
             autoCapitalize="none"
             autoCorrect={false}
+            onEndEditing={(e) => handleValidProductName(e.nativeEvent.text)}
           />
 
+          {data.isValidProductName ? null :
+            <View style={{ justifyContent: 'flex-start' }} >
+              <Text style={styles.errorMsg}>Hey ! Product Name should not be empty.</Text>
+            </View>
+          }
+
           <TouchableOpacity
+            onEndEditing={(e) => handleValidProductImage(e.nativeEvent.text)}
             onPress={() => setVisibilityImageUploadModal(true)}
             style={styles.inputContainer}>
             <Text style={styles.input} numberOfLines={1} >
@@ -375,6 +611,13 @@ const HomeScreen = () => {
             <Icon name="image-outline" color={'#2e64e5'} size={28} />
           </TouchableOpacity>
 
+          {data.isValidProductImage ? null :
+            <View style={{ justifyContent: 'flex-start' }} >
+              <Text style={styles.errorMsg}>Hey ! Product Image should not be empty.</Text>
+            </View>
+          }
+
+
           <FormInput
             labelValue={productPrice}
             onChangeText={(userProductPrice) => setProductPrice(userProductPrice)}
@@ -382,7 +625,15 @@ const HomeScreen = () => {
             autoCapitalize="none"
             autoCorrect={false}
             keyboardType={'numeric'}
+            onEndEditing={(e) => handleValidProductPrice(e.nativeEvent.text)}
           />
+
+          {data.isValidProductPrice ? null :
+            <View style={{ justifyContent: 'flex-start' }} >
+              <Text style={styles.errorMsg}>Hey ! Product Price should not be empty.</Text>
+            </View>
+          }
+
           <FormInput
             labelValue={productOfferPrice}
             onChangeText={(userProductOfferPrice) => setProductOfferPrice(userProductOfferPrice)}
@@ -390,38 +641,84 @@ const HomeScreen = () => {
             autoCapitalize="none"
             autoCorrect={false}
             keyboardType={'numeric'}
+            onEndEditing={(e) => handleValidProductOfferPrice(e.nativeEvent.text)}
           />
-          <TouchableOpacity
-            style={[styles.button, styles.buttonClose]}
-            onPress={() => AddProduct()}
-          >
-            <Text style={styles.textStyle}>Add Product</Text>
-          </TouchableOpacity>
+          {data.isValidProductOfferPrice ? null :
+            <View style={{ justifyContent: 'flex-start' }} >
+              <Text style={styles.errorMsg}>Hey ! Product Offer Price should not be empty.</Text>
+            </View>
+          }
 
+          {uploading ? (
+            <View style={{
+              justifyContent: 'center',
+              alignItems: 'center'
+            }}>
+              <Text>{transferred} % Completed!</Text>
+              <ActivityIndicator size="large" color="#0000ff" />
+            </View>
+          ) : productId == '' ? (
+            <TouchableOpacity
+              style={[styles.button, styles.buttonClose]}
+              onPress={() => AddProduct()}
+            >
+              <Text style={styles.textStyle}>{'Add Product'} </Text>
+            </TouchableOpacity>) : (
+            <TouchableOpacity
+              style={[styles.button, styles.buttonClose]}
+              onPress={() => UpdateProduct()}
+            >
+              <Text style={styles.textStyle}>{'Update Product'} </Text>
+            </TouchableOpacity>
+          )}
         </View>
       </View>
     )
   }
 
+  const renderEmptyComponent = () => {
+    return (
+      <View
+        style={styles.NodataView}>
+        <Text style={styles.NoDataTxt}>
+          Please Add Products By clicking Plus Icon
+        </Text>
+      </View>
+    );
+  };
+
+
   const renderProductList = () => {
     return (
       <FlatList
-        data={productData}
-        numColumns={2}
+        data={productData == undefined ||
+          productData == [] ||
+          productData.length == 0
+          ? []
+          : productData}
+        numColumns={1}
+        keyExtractor={(item) => item.id}
+        ListEmptyComponent={renderEmptyComponent()}
         renderItem={({ item, index }) =>
-          <View style={styles.renderContainer} >
-            <TouchableOpacity
-              onPress={() => { }} >
-              <ImageBackground resizeMode='contain' source={{ uri: item.productImageURI }} style={{ height: H / 3.02, width: W / 2.03, borderTopLeftRadius: 5, borderTopRightRadius: 5 }} >
-              </ImageBackground>
-            </TouchableOpacity>
-            <View style={styles.productInfo}>
-              <Text style={styles.title} numberOfLines={1}>{item.productName}</Text>
-            </View>
-            <Text style={styles.title} numberOfLines={1}>{item.productName}</Text>
-            <Text style={styles.title} numberOfLines={1}>{item.productPrice}</Text>
-            <Text style={styles.title} numberOfLines={1}>{item.productOfferPrice}</Text>
-          </View>
+          <Card mode='elevated' elevation={3} style={styles.renderFlatlistContainer} >
+            <Card.Cover resizeMode='cover' style={{ height: 250 }} source={{ uri: item.productImageURI }} />
+            <Card.Title titleStyle={styles.flatlistTitleTxt} title={item.productName} />
+            <Card.Content >
+              <Title style={styles.flatlistTitleSubTxt}>Price : ₹ {item.productPrice}</Title>
+              <Title style={styles.flatlistTitleSubTxt}>Offer Price : ₹ {item.productOfferPrice}</Title>
+            </Card.Content>
+            <Card.Actions style={{ justifyContent: 'flex-end' }}>
+              <Button
+                onPress={() => handleEditProduct(item)}
+                labelStyle={{ fontSize: 14 }}
+                color={'#2e64e5'}>View</Button>
+              <Button icon={"delete-outline"}
+                onPress={() => handleDeleteProduct(item.id)}
+                labelStyle={{ fontSize: 18 }}
+                color={'#2e64e5'}
+              />
+            </Card.Actions>
+          </Card>
         } />
     )
   }
@@ -429,38 +726,42 @@ const HomeScreen = () => {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.text}>Hi ,Good {Greeting()}!</Text>
+        <Text style={styles.text}>Hi ,Good {Greeting()}</Text>
         <TouchableOpacity onPress={onSignout}>
           <Icon name="exit-to-app" color={'#2e64e5'} size={26} />
         </TouchableOpacity>
       </View>
       <View style={styles.footer}>
         {renderProductList()}
+
+        <FAB
+          icon="plus"
+          style={styles.fab}
+          onPress={() => [setProductName(''),
+          setFileURI(''),
+          setProductPrice(''),
+          setProductOfferPrice(''), setModalVisible(true)]}
+        />
+        <View style={styles.centeredView}>
+          <Modal
+            animationType="slide"
+            transparent={true}
+            visible={modalVisible}
+            onRequestClose={() => setModalVisible(!modalVisible)} >
+            {renderProductsForm()}
+          </Modal>
+        </View>
+        <View style={styles.centeredView}>
+          <Modal
+            animationType="slide"
+            transparent={true}
+            visible={visibilityImageUploadModal}
+            onRequestClose={() => setVisibilityImageUploadModal(!visibilityImageUploadModal)} >
+            {renderChoosePicModal()}
+          </Modal>
+        </View>
       </View>
-      <FAB
-        icon="plus"
-        style={styles.fab}
-        onPress={() => setModalVisible(true)}
-      />
-      <View style={styles.centeredView}>
-        <Modal
-          animationType="slide"
-          transparent={true}
-          visible={modalVisible}
-          onRequestClose={() => setModalVisible(!modalVisible)} >
-          {renderProductsForm()}
-        </Modal>
-      </View>
-      <View style={styles.centeredView}>
-        <Modal
-          animationType="slide"
-          transparent={true}
-          visible={visibilityImageUploadModal}
-          onRequestClose={() => setVisibilityImageUploadModal(!visibilityImageUploadModal)} >
-          {renderChoosePicModal()}
-        </Modal>
-      </View>
-    </View>
+    </View >
   )
 }
 
@@ -470,13 +771,13 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   header: {
-    flex: 0.2,
+    flex: 0.1,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 10,
-    marginBottom: 15,
-    marginTop: 10
+    borderBottomWidth: 1,
+    borderBottomColor: "#2e64e5",
   },
   text: {
     fontSize: 22,
@@ -529,14 +830,17 @@ const styles = StyleSheet.create({
   },
   modalTextView: { flexDirection: 'row', justifyContent: 'space-between' },
   footer: {
-    flex: 0.8,
+    flex: 0.9,
     width: '100%',
     alignSelf: 'center',
+
   },
-  renderContainer: {
-    marginTop: "0.5%",
+  renderFlatlistContainer: {
+    justifyContent: 'center',
+    alignSelf: 'center',
+    marginVertical: 10,
     flex: 1,
-    backgroundColor: 'red'
+    width: '90%'
   },
   productInfo: {
     marginLeft: 10
@@ -622,6 +926,26 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     borderColor: 'rgba(0, 0, 0, 0.1)',
     marginTop: 10,
+  },
+  flatlistTitleTxt: { color: "#2e64e5", fontSize: 18, textTransform: 'uppercase' },
+  flatlistTitleSubTxt: {
+    color: "#2e64e5", fontSize: 15,
+  },
+  errorMsg: {
+    color: '#FF0000',
+    fontSize: 14,
+    paddingLeft: 10,
+  },
+  NodataView: {
+    flexGrow: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  NoDataTxt: {
+    alignSelf: 'center',
+    margin: 30,
+    fontSize: 16,
+    fontWeight: 'bold'
   },
 })
 
