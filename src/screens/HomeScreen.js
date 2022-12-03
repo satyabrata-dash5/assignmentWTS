@@ -35,69 +35,15 @@ const HomeScreen = () => {
     isValidProductOfferPrice: true,
   });
 
-  const handleValidProductName = (val) => {
-    if (val.trim().length >= 1) {
-      setData({
-        ...data,
-        productName: val,
-        isValidProductName: true
-      });
-    } else {
-      setData({
-        ...data,
-        productName: val,
-        isValidProductName: false
-      });
-    }
-  }
+  useEffect(() => {
+    fetchProducts();
+  }, []);
 
-  const handleValidProductImage = (val) => {
-    if (val.trim().length >= 1) {
-      setData({
-        ...data,
-        fileName: val,
-        isValidProductImage: true
-      });
-    } else {
-      setData({
-        ...data,
-        fileName: val,
-        isValidProductImage: false
-      });
-    }
-  }
 
-  const handleValidProductPrice = (val) => {
-    if (val.trim().length >= 1) {
-      setData({
-        ...data,
-        productPrice: val,
-        isValidProductPrice: true
-      });
-    } else {
-      setData({
-        ...data,
-        productPrice: val,
-        isValidProductPrice: false
-      });
-    }
-  }
-
-  const handleValidProductOfferPrice = (val) => {
-    if (val.trim().length >= 1) {
-      setData({
-        ...data,
-        productOfferPrice: val,
-        isValidProductOfferPrice: true
-      });
-    } else {
-      setData({
-        ...data,
-        productOfferPrice: val,
-        isValidProductOfferPrice: false
-      });
-    }
-  }
+  useEffect(() => {
+    fetchProducts();
+    setDeleted(false);
+  }, [deleted]);
 
   useEffect(() => {
     const currentUserId = auth().currentUser ? auth().currentUser.uid : "";
@@ -112,18 +58,9 @@ const HomeScreen = () => {
     }
   });
 
-  useEffect(() => {
-    fetchProducts();
-  }, []);
-
-  useEffect(() => {
-    fetchProducts();
-    setDeleted(false);
-  }, [deleted]);
-
   const fetchProducts = async () => {
-    setIsLoading(true);
     try {
+      setIsLoading(true);
       const list = [];
       await firestore()
         .collection('Products')
@@ -181,7 +118,6 @@ const HomeScreen = () => {
       alert('Please Select Product Offer Price');
       return;
     }
-    setIsLoading(true);
     const imageUrl = await uploadImage();
     const updatedImageUrl = productId !== '' ? fileURI : imageUrl
     console.log(updatedImageUrl);
@@ -203,10 +139,12 @@ const HomeScreen = () => {
           'Product updated!',
           'Your product has been updated Successfully!',
         );
-        setIsLoading(false);
         setModalVisible(!modalVisible)
+        fetchProducts();
         setProductName('');
+        setProductId('');
         setFileURI('');
+        setFileName('');
         setProductPrice('');
         setProductOfferPrice('');
       })
@@ -233,7 +171,6 @@ const HomeScreen = () => {
       alert('Please Select Product Offer Price');
       return;
     }
-    setIsLoading(true);
     const imageUrl = await uploadImage();
 
     firestore()
@@ -253,10 +190,12 @@ const HomeScreen = () => {
           'Product saved!',
           'Your product has been saved Successfully!',
         );
-        setIsLoading(false);
         setModalVisible(!modalVisible)
+        fetchProducts();
         setProductName('');
+        setProductId('');
         setFileURI('');
+        setFileName('');
         setProductPrice('');
         setProductOfferPrice('');
       })
@@ -382,6 +321,71 @@ const HomeScreen = () => {
         }
       });
   };
+
+  const handleValidProductName = (val) => {
+    if (val.trim().length >= 1) {
+      setData({
+        ...data,
+        productName: val,
+        isValidProductName: true
+      });
+    } else {
+      setData({
+        ...data,
+        productName: val,
+        isValidProductName: false
+      });
+    }
+  }
+
+  const handleValidProductImage = (val) => {
+    if (val.trim().length >= 1) {
+      setData({
+        ...data,
+        fileName: val,
+        isValidProductImage: true
+      });
+    } else {
+      setData({
+        ...data,
+        fileName: val,
+        isValidProductImage: false
+      });
+    }
+  }
+
+  const handleValidProductPrice = (val) => {
+    if (val.trim().length >= 1) {
+      setData({
+        ...data,
+        productPrice: val,
+        isValidProductPrice: true
+      });
+    } else {
+      setData({
+        ...data,
+        productPrice: val,
+        isValidProductPrice: false
+      });
+    }
+  }
+
+  const handleValidProductOfferPrice = (val) => {
+    if (val.trim().length >= 1) {
+      setData({
+        ...data,
+        productOfferPrice: val,
+        isValidProductOfferPrice: true
+      });
+    } else {
+      setData({
+        ...data,
+        productOfferPrice: val,
+        isValidProductOfferPrice: false
+      });
+    }
+  }
+
 
   const deleteFirestoreData = (pId) => {
     setIsLoading(true);
@@ -579,9 +583,11 @@ const HomeScreen = () => {
             <TouchableOpacity onPress={() => [
               setModalVisible(!modalVisible),
               setProductName(''),
+              setProductId(''),
               setFileURI(''),
+              setFileName(''),
               setProductPrice(''),
-              setProductOfferPrice(''),]}>
+              setProductOfferPrice('')]}>
               <Icon name="close-thick" color={'#2e64e5'} size={20} />
             </TouchableOpacity>
           </View>
@@ -681,6 +687,9 @@ const HomeScreen = () => {
       <View
         style={styles.NodataView}>
         <Text style={styles.NoDataTxt}>
+          No Products Found !
+        </Text>
+        <Text style={styles.NoDataTxt}>
           Please Add Products By clicking Plus Icon
         </Text>
       </View>
@@ -737,10 +746,13 @@ const HomeScreen = () => {
         <FAB
           icon="plus"
           style={styles.fab}
-          onPress={() => [setProductName(''),
-          setFileURI(''),
-          setProductPrice(''),
-          setProductOfferPrice(''), setModalVisible(true)]}
+          onPress={() => [
+            setProductName(''),
+            setProductId(''),
+            setFileURI(''),
+            setFileName(''),
+            setProductPrice(''),
+            setProductOfferPrice(''), setModalVisible(true)]}
         />
         <View style={styles.centeredView}>
           <Modal
