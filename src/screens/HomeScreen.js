@@ -59,6 +59,7 @@ const HomeScreen = () => {
   });
 
   const fetchProducts = async () => {
+    const currentUserId = auth().currentUser ? auth().currentUser.uid : "";
     try {
       setIsLoading(true);
       const list = [];
@@ -88,10 +89,12 @@ const HomeScreen = () => {
               productPrice,
               productOfferPrice,
             });
+
           });
         });
-
-      setProductData(list);
+      let SelectedList = list.filter(x => x.userId === currentUserId);
+      console.log(currentUserId);
+      setProductData(SelectedList);
       setIsLoading(false);
       if (loading) {
         setLoading(false);
