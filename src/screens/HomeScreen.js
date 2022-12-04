@@ -24,8 +24,6 @@ const HomeScreen = () => {
   const [productId, setProductId] = useState('');
   const [productData, setProductData] = useState(null);
   const [deleted, setDeleted] = useState(false);
-  const [uploading, setUploading] = useState(false);
-  const [transferred, setTransferred] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   const [data, setData] = useState({
     secureTextEntry: true,
@@ -93,7 +91,6 @@ const HomeScreen = () => {
           });
         });
       let SelectedList = list.filter(x => x.userId === currentUserId);
-      console.log(currentUserId);
       setProductData(SelectedList);
       setIsLoading(false);
       if (loading) {
@@ -105,6 +102,7 @@ const HomeScreen = () => {
   };
 
   const UpdateProduct = async () => {
+    setIsLoading(true);
     if (!productName.trim()) {
       alert('Please Enter product name');
       return;
@@ -142,6 +140,7 @@ const HomeScreen = () => {
           'Product updated!',
           'Your product has been updated Successfully!',
         );
+        setIsLoading(false);
         setModalVisible(!modalVisible)
         fetchProducts();
         setProductName('');
@@ -158,6 +157,7 @@ const HomeScreen = () => {
 
 
   const AddProduct = async () => {
+    setIsLoading(true);
     if (!productName.trim()) {
       alert('Please Enter product name');
       return;
@@ -193,6 +193,7 @@ const HomeScreen = () => {
           'Product saved!',
           'Your product has been saved Successfully!',
         );
+        setIsLoading(false);
         setModalVisible(!modalVisible)
         fetchProducts();
         setProductName('');
@@ -219,9 +220,6 @@ const HomeScreen = () => {
     const name = filename.split('.').slice(0, -1).join('.');
     filename = name + Date.now() + '.' + extension;
 
-    setUploading(true);
-    setTransferred(0);
-
     const storageRef = storage().ref(`photos/${filename}`);
     const task = storageRef.putFile(uploadUri);
 
@@ -230,17 +228,11 @@ const HomeScreen = () => {
       console.log(
         `${taskSnapshot.bytesTransferred} transferred out of ${taskSnapshot.totalBytes}`,
       );
-
-      setTransferred(
-        Math.round(taskSnapshot.bytesTransferred / taskSnapshot.totalBytes) *
-        100,
-      );
     });
 
     try {
       await task;
       const url = await storageRef.getDownloadURL();
-      setUploading(false);
       setFileURI(null);
       return url;
 
@@ -658,7 +650,7 @@ const HomeScreen = () => {
             </View>
           }
 
-          {uploading ? (
+          {/* {uploading &&
             <View style={{
               justifyContent: 'center',
               alignItems: 'center'
@@ -666,7 +658,8 @@ const HomeScreen = () => {
               <Text>{transferred} % Completed!</Text>
               <ActivityIndicator size="large" color="#0000ff" />
             </View>
-          ) : productId == '' ? (
+          } */}
+          {productId == '' ? (
             <TouchableOpacity
               style={[styles.button, styles.buttonClose]}
               onPress={() => AddProduct()}
